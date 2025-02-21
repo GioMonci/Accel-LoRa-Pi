@@ -8,7 +8,6 @@
 *********************************************/
 
 // Includes
-#include <Adafruit_gps.h>
 #include "accelerometer.h"
 #include "lorawan.h"
 
