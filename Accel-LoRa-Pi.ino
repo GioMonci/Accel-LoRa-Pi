@@ -10,6 +10,9 @@
 /**Includes**/
 #include <Arduino.h>             // mutlithreading
 #include <Adafruit_ISM330DHCX.h> // for accelerometer
+#include <SPI.h>
+#include <lmic.h>
+#include <hal/hal.h>
 
 /**Definitions:**/
 
@@ -79,6 +82,7 @@ void accelSerial(void *parameter){
   while(true){
     // again dumb asf, need 3 arguments to be passed to work, kms.
     ism330dhcx.getEvent(&accel, &gyro, &temp);
+    /**
     // simple print debug, change if needed
     Serial.print(accel.acceleration.x);
     Serial.print(",");
@@ -86,6 +90,12 @@ void accelSerial(void *parameter){
     Serial.print(",");
     Serial.print(accel.acceleration.z);
     Serial.println();
+    **/
+    String accelData = String(&accel.acceleration.x) + "," +
+                       String(&accel.acceleration.y) + "," +
+                       String(&accel.acceleration.z);
+    Serial.println(data);
+    sendLoRaData(data);
     // Add delay for task to yield control
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -93,3 +103,13 @@ void accelSerial(void *parameter){
 // End of Accelerometer Section
 
 // ========================================================================================
+
+// Start of LoRaWan Section
+
+void loRaSetup(){
+
+}
+
+void sendLoRaData(){
+  
+}
