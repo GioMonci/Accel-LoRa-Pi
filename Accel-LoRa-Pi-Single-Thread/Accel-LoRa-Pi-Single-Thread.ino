@@ -19,16 +19,14 @@
 /**LoRa Definitions:**/
 #define CFG_us915 1  // For USA
 
-// This EUI must be in little-endian format, so least-significant-byte first.
+
 static const u1_t PROGMEM APPEUI[8]={0x45,0xba,0xe9,0x69,0x65,0xb7,0xca,0x79};
-void os_getArtEui (u1_t* buf){ memcpy_P(buf, APPEUI, 8);}
-// LSB
+void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8);}
 static const u1_t PROGMEM DEVEUI[8]={0x2d,0x80,0x2e,0x01,0x38,0xd7,0xb1,0x4a};
-void os_getDevEui (u1_t* buf){ memcpy_P(buf, DEVEUI, 8);}
-//LSB
-//MSB
+void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8);}
 static const u1_t PROGMEM APPKEY[16] = {0xf8,0x69,0xe4,0x26,0x1a,0x6f,0xc9,0xad,0xf5,0xec,0x6b,0x6d,0xe8,0xd0,0x24,0xeb};
-void os_getDevKey (u1_t* buf){  memcpy_P(buf, APPKEY, 16);}
+void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 16);}
+
 
 /**Declarations**/
 void accelSetup();
@@ -107,6 +105,7 @@ void accelSerial(){
     // again dumb asf, need 3 arguments to be passed to work, kms.
     ism330dhcx.getEvent(&accel, &gyro, &temp);
     // Convert float data to bytes
+    delay(10);
     memcpy(&mydata[0], &accel.acceleration.x, sizeof(float));
     memcpy(&mydata[4], &accel.acceleration.y, sizeof(float));
     memcpy(&mydata[8], &accel.acceleration.z, sizeof(float));
@@ -123,18 +122,14 @@ void accelSerial(){
 // Start of LoRaWan Section
 
 void loRaSetup(){
-  // LMIC init
-  LMIC_selectSubBand(1);  // TTN uses sub-band 1 in the US
-  // Reset the MAC state. Session and pending data transfers will be discarded.
+  os_init();
   LMIC_reset();
-  LMIC_setClockError(MAX_CLOCK_ERROR * 1 / 100);
-  // Start job (sending automatically starts OTAA too)
   do_send(&sendjob);
-  
 }
 
 void sendLoRaData(){
   os_runloop_once();
+  delay(60000);
 }
 void printHex2(unsigned v) {
     v &= 0xff;
@@ -192,7 +187,7 @@ void onEvent (ev_t ev) {
             // Disable link check validation (automatically enabled
             // during join, but because slow data rates change max TX
 	    // size, we don't use it in this example.
-            //LMIC_setLinkCheckMode(0);
+            LMIC_setLinkCheckMode(0);
             break;
         case EV_JOIN_FAILED:
             Serial.println(F("EV_JOIN_FAILED"));
@@ -245,8 +240,9 @@ void onEvent (ev_t ev) {
             Serial.print(F("Unknown event: "));
             Serial.println((unsigned) ev);
             break;
-    }
+  }
 }
+
 
 void do_send(osjob_t* j){
     // Check if there is not a current TX/RX job running
@@ -254,7 +250,7 @@ void do_send(osjob_t* j){
         Serial.println(F("OP_TXRXPEND, not sending"));
     } else {
         // Prepare upstream data transmission at the next possible time.
-        LMIC_setTxData2(1, mydata, sizeof(mydata), 0);
+        LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
         Serial.println(F("Packet queued"));
     }
     // Next TX is scheduled after TX_COMPLETE event.
