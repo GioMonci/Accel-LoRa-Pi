@@ -34,7 +34,7 @@ void os_getDevKey (u1_t* buf){  memcpy_P(buf, APPKEY, 16);}
 void accelSetup();
 void accelSerial();
 void loRaSetup();
-void sendLoRaData(bool &status);
+void sendLoRaData();
 void printHex2(unsigned v);
 void onEvent (ev_t ev);
 void do_send(osjob_t* j);
@@ -71,13 +71,8 @@ void setup() {
 
 /**MAIN LOOP**/
 void loop() {
-  bool sent;
   accelSerial();  // Collect accelerometer data
-  sendLoRaData(sent);  // Try sending data
-
-  // Only proceed to the next accelerometer cycle if the data was successfully sent
-  if (sent) {Serial.println("Data sent successfully! Collecting next batch...");} 
-  else {Serial.println("LoRa send failed, retrying...");}
+  sendLoRaData();  // Try sending data
 }
 
 // ========================================================================================
@@ -138,16 +133,8 @@ void loRaSetup(){
   
 }
 
-void sendLoRaData(bool &status){
-  while(LMIC.opmode & OP_TXRXPEND){
-    os_runloop_once(); }
-  // Check if transmission was successful
-  if (LMIC.txrxFlags & TXRX_ACK || LMIC.dataLen > 0) {
-    Serial.println("LoRa transmission successful!");
-    status = true;} 
-  else {
-    Serial.println("LoRa transmission failed.");
-    status = false;}
+void sendLoRaData(){
+  os_runloop_once();
 }
 void printHex2(unsigned v) {
     v &= 0xff;
