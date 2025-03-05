@@ -124,12 +124,19 @@ void accelSerial(){
 void loRaSetup(){
   os_init();
   LMIC_reset();
-  do_send(&sendjob);
 }
 
 void sendLoRaData(){
-  os_runloop_once();
-  delay(60000);
+    do_send(&sendjob);
+    os_runloop_once();
+    Serial.print("mydata: ");
+    for (int i = 0; i < sizeof(mydata); i++) {
+      Serial.print("0x");
+      Serial.print(mydata[i], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
+    delay(20000);
 }
 void printHex2(unsigned v) {
     v &= 0xff;
@@ -249,7 +256,7 @@ void do_send(osjob_t* j){
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
     } else {
-        // Prepare upstream data transmission at the next possible time.
+        //Prepare upstream data transmission at the next possible time.
         LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
         Serial.println(F("Packet queued"));
     }
