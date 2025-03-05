@@ -20,11 +20,11 @@
 #define CFG_us915 1  // For USA
 
 
-static const u1_t PROGMEM APPEUI[8]={0x45,0xba,0xe9,0x69,0x65,0xb7,0xca,0x79};
+static const u1_t PROGMEM APPEUI[8]= {};
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8);}
-static const u1_t PROGMEM DEVEUI[8]={0x2d,0x80,0x2e,0x01,0x38,0xd7,0xb1,0x4a};
+static const u1_t PROGMEM DEVEUI[8]= {};
 void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8);}
-static const u1_t PROGMEM APPKEY[16] = {0xf8,0x69,0xe4,0x26,0x1a,0x6f,0xc9,0xad,0xf5,0xec,0x6b,0x6d,0xe8,0xd0,0x24,0xeb};
+static const u1_t PROGMEM APPKEY[16] = {};
 void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 16);}
 
 
@@ -69,8 +69,9 @@ void setup() {
 
 /**MAIN LOOP**/
 void loop() {
+  sendLoRaData();
   accelSerial();  // Collect accelerometer data
-  sendLoRaData();  // Try sending data
+    // Try sending data
 }
 
 // ========================================================================================
@@ -127,15 +128,15 @@ void loRaSetup(){
 }
 
 void sendLoRaData(){
-    do_send(&sendjob);
-    os_runloop_once();
-    Serial.print("mydata: ");
+   Serial.print("mydata: ");
     for (int i = 0; i < sizeof(mydata); i++) {
       Serial.print("0x");
       Serial.print(mydata[i], HEX);
       Serial.print(" ");
     }
     Serial.println();
+    do_send(&sendjob);
+    os_runloop_once();
     delay(20000);
 }
 void printHex2(unsigned v) {
