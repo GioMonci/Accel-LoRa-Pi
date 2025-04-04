@@ -15,13 +15,8 @@ The goal is to establish a low-power, long-range wireless communication system f
 ## Improvements Complete
  - Send Acceleration Data to Remote Raspberry Pi using LoRa
  - Merge existing Accel and LoRa code
- - Setup Multi-Threading
  - Cleaned up redundant code
+ - Sending 48 bytes
 
 ## Notes / TO-DO:
-  - Try single core to see if EV join is faster.
-  - Maybe try rewritting how we send.
-  - Check how much we are updating myData[].
-  - Is it too fast?
-  - Instead of mutlithreading accel and loRa create an algo that does 10 seconds of collection then sends that data.
-  - Think about how we are going to implement tensor flow with our exisiting code
+  - Make send rates more efficient and stable
