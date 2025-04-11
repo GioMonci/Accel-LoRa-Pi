@@ -43,6 +43,18 @@ struct AccelData {
   float x_std;
   float y_std;
   float z_std;
+  float x_mean;
+  float y_mean;
+  float z_mean;
+  float x_rms;
+  float y_rms;
+  float z_rms;
+  float x_p2p;  // Peak to peak amplitude
+  float y_p2p;
+  float z_p2p;
+  float x_crest; // Crest factor
+  float y_crest;
+  float z_crest;
 };
 
 AccelData accelData;
@@ -77,8 +89,8 @@ static void do_send(osjob_t* j);
 static osjob_t sendjob;
 
 // Data buffer - expanded to hold all metrics
-// 12 floats × 4 bytes = 48 bytes
-static uint8_t mydata[48];
+// 24 floats × 4 bytes = 96 bytes
+static uint8_t mydata[96];
 
 void resetStatistics() {
   // Initialize min values to maximum possible float
@@ -102,10 +114,10 @@ void setupAccelerometer() {
   Serial.println("ISM330DHCX Found!");
   
   // Configure accelerometer settings for higher frequency sampling
-  ism330dhcx.setAccelRange(LSM6DS_ACCEL_RANGE_2_G);
-  ism330dhcx.setAccelDataRate(LSM6DS_RATE_104_HZ);  
+  ism330dhcx.setAccelRange(LSM6DS_ACCEL_RANGE_4_G);
+  ism330dhcx.setAccelDataRate(LSM6DS_RATE_416_HZ);  // Increased from 208Hz
   ism330dhcx.setGyroRange(LSM6DS_GYRO_RANGE_500_DPS);
-  ism330dhcx.setGyroDataRate(LSM6DS_RATE_416_HZ); 
+  ism330dhcx.setGyroDataRate(LSM6DS_RATE_416_HZ);   // Increased from 208Hz
   
   // Configure interrupt if needed
   ism330dhcx.configInt1(false, false, true);  // accelerometer DRDY on INT1
@@ -153,17 +165,42 @@ void sampleAccelerometer() {
 void calculateStatistics() {
   if (stats.sample_count > 1) {
     // Calculate means
-    float x_mean = stats.x_sum / stats.sample_count;
-    float y_mean = stats.y_sum / stats.sample_count;
-    float z_mean = stats.z_sum / stats.sample_count;
+    accelData.x_mean = stats.x_sum / stats.sample_count;
+    accelData.y_mean = stats.y_sum / stats.sample_count;
+    accelData.z_mean = stats.z_sum / stats.sample_count;
     
     // Calculate standard deviations
-    accelData.x_std = sqrt((stats.x_sum_sq / stats.sample_count) - (x_mean * x_mean));
-    accelData.y_std = sqrt((stats.y_sum_sq / stats.sample_count) - (y_mean * y_mean));
-    accelData.z_std = sqrt((stats.z_sum_sq / stats.sample_count) - (z_mean * z_mean));
+    accelData.x_std = sqrt((stats.x_sum_sq / stats.sample_count) - (accelData.x_mean * accelData.x_mean));
+    accelData.y_std = sqrt((stats.y_sum_sq / stats.sample_count) - (accelData.y_mean * accelData.y_mean));
+    accelData.z_std = sqrt((stats.z_sum_sq / stats.sample_count) - (accelData.z_mean * accelData.z_mean));
+    
+    // Calculate RMS (Root Mean Square)
+    accelData.x_rms = sqrt(stats.x_sum_sq / stats.sample_count);
+    accelData.y_rms = sqrt(stats.y_sum_sq / stats.sample_count);
+    accelData.z_rms = sqrt(stats.z_sum_sq / stats.sample_count);
+    
+    // Calculate peak-to-peak amplitude (max - min)
+    accelData.x_p2p = accelData.x_max - accelData.x_min;
+    accelData.y_p2p = accelData.y_max - accelData.y_min;
+    accelData.z_p2p = accelData.z_max - accelData.z_min;
+    
+    // Calculate crest factor (peak / RMS)
+    // Using absolute max value as peak
+    float x_peak = max(fabs(accelData.x_max), fabs(accelData.x_min));
+    float y_peak = max(fabs(accelData.y_max), fabs(accelData.y_min));
+    float z_peak = max(fabs(accelData.z_max), fabs(accelData.z_min));
+    
+    // Protect against division by zero
+    accelData.x_crest = (accelData.x_rms > 0) ? x_peak / accelData.x_rms : 0;
+    accelData.y_crest = (accelData.y_rms > 0) ? y_peak / accelData.y_rms : 0; 
+    accelData.z_crest = (accelData.z_rms > 0) ? z_peak / accelData.z_rms : 0;
   } else {
-    // Not enough samples for standard deviation
+    // Not enough samples for statistics
     accelData.x_std = accelData.y_std = accelData.z_std = 0;
+    accelData.x_mean = accelData.y_mean = accelData.z_mean = 0;
+    accelData.x_rms = accelData.y_rms = accelData.z_rms = 0;
+    accelData.x_p2p = accelData.y_p2p = accelData.z_p2p = 0;
+    accelData.x_crest = accelData.y_crest = accelData.z_crest = 0;
   }
 }
 
@@ -194,6 +231,26 @@ void prepareDataPacket() {
   memcpy(&mydata[offset], &accelData.y_std, sizeof(float)); offset += sizeof(float);
   memcpy(&mydata[offset], &accelData.z_std, sizeof(float)); offset += sizeof(float);
   
+  // Mean values
+  memcpy(&mydata[offset], &accelData.x_mean, sizeof(float)); offset += sizeof(float);
+  memcpy(&mydata[offset], &accelData.y_mean, sizeof(float)); offset += sizeof(float);
+  memcpy(&mydata[offset], &accelData.z_mean, sizeof(float)); offset += sizeof(float);
+  
+  // RMS values
+  memcpy(&mydata[offset], &accelData.x_rms, sizeof(float)); offset += sizeof(float);
+  memcpy(&mydata[offset], &accelData.y_rms, sizeof(float)); offset += sizeof(float);
+  memcpy(&mydata[offset], &accelData.z_rms, sizeof(float)); offset += sizeof(float);
+  
+  // Peak-to-peak amplitude values
+  memcpy(&mydata[offset], &accelData.x_p2p, sizeof(float)); offset += sizeof(float);
+  memcpy(&mydata[offset], &accelData.y_p2p, sizeof(float)); offset += sizeof(float);
+  memcpy(&mydata[offset], &accelData.z_p2p, sizeof(float)); offset += sizeof(float);
+  
+  // Crest factor values
+  memcpy(&mydata[offset], &accelData.x_crest, sizeof(float)); offset += sizeof(float);
+  memcpy(&mydata[offset], &accelData.y_crest, sizeof(float)); offset += sizeof(float);
+  memcpy(&mydata[offset], &accelData.z_crest, sizeof(float)); offset += sizeof(float);
+  
   // Print values to serial console for debugging
   Serial.println("=== Data Packet Ready ===");
   Serial.print("Accel XYZ: "); 
@@ -215,6 +272,26 @@ void prepareDataPacket() {
   Serial.print(accelData.x_std); Serial.print(", ");
   Serial.print(accelData.y_std); Serial.print(", ");
   Serial.println(accelData.z_std);
+  
+  Serial.print("Mean XYZ: ");
+  Serial.print(accelData.x_mean); Serial.print(", ");
+  Serial.print(accelData.y_mean); Serial.print(", ");
+  Serial.println(accelData.z_mean);
+  
+  Serial.print("RMS XYZ: ");
+  Serial.print(accelData.x_rms); Serial.print(", ");
+  Serial.print(accelData.y_rms); Serial.print(", ");
+  Serial.println(accelData.z_rms);
+  
+  Serial.print("P2P XYZ: ");
+  Serial.print(accelData.x_p2p); Serial.print(", ");
+  Serial.print(accelData.y_p2p); Serial.print(", ");
+  Serial.println(accelData.z_p2p);
+  
+  Serial.print("Crest XYZ: ");
+  Serial.print(accelData.x_crest); Serial.print(", ");
+  Serial.print(accelData.y_crest); Serial.print(", ");
+  Serial.println(accelData.z_crest);
   
   Serial.print("Samples: ");
   Serial.println(stats.sample_count);
